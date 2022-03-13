@@ -1,2 +1,0 @@
-# freedosocial
-SOCIAL NETWORKING WEBSITE
