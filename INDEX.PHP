@@ -1,199 +1,170 @@
-<?php
-
-//index.php
-
-//error_reporting(E_ALL);
-
-session_start();
-
-if(isset($_SESSION["user_id"]))
-{
- header("location:home.php");
-}
-
-include('function.php');
-
-$connect = new PDO("mysql:host=localhost; dbname=testing", "root", "");
-
-$message = '';
-$error_user_name = '';
-$error_user_email = '';
-$error_user_password = '';
-$user_name = '';
-$user_email = '';
-$user_password = '';
-
-if(isset($_POST["register"]))
-{
- if(empty($_POST["user_name"]))
- {
-  $error_user_name = "<label class='text-danger'>Enter Name</label>";
- }
- else
- {
-  $user_name = trim($_POST["user_name"]);
-  $user_name = htmlentities($user_name);
- }
-
- if(empty($_POST["user_email"]))
- {
-  $error_user_email = '<label class="text-danger">Enter Email Address</label>';
- }
- else
- {
-  $user_email = trim($_POST["user_email"]);
-  if(!filter_var($user_email, FILTER_VALIDATE_EMAIL))
-  {
-   $error_user_email = '<label class="text-danger">Enter Valid Email Address</label>';
-  }
- }
-
- if(empty($_POST["user_password"]))
- {
-  $error_user_password = '<label class="text-danger">Enter Password</label>';
- }
- else
- {
-  $user_password = trim($_POST["user_password"]);
-  $user_password = password_hash($user_password, PASSWORD_DEFAULT);
- }
-
- if($error_user_name == '' && $error_user_email == '' && $error_user_password == '')
- {
-  $user_activation_code = md5(rand());
-
-  $user_otp = rand(100000, 999999);
-
-  $data = array(
-   ':user_name'  => $user_name,
-   ':user_email'  => $user_email,
-   ':user_password' => $user_password,
-   ':user_activation_code' => $user_activation_code,
-   ':user_email_status'=> 'not verified',
-   ':user_otp'   => $user_otp
-  );
-
-  $query = "
-  INSERT INTO register_user 
-  (user_name, user_email, user_password, user_activation_code, user_email_status, user_otp)
-  SELECT * FROM (SELECT :user_name, :user_email, :user_password, :user_activation_code, :user_email_status, :user_otp) AS tmp
-  WHERE NOT EXISTS (
-      SELECT user_email FROM register_user WHERE user_email = :user_email
-  ) LIMIT 1
-  ";
-
-  $statement = $connect->prepare($query);
-
-  $statement->execute($data);
-
-  if($connect->lastInsertId() == 0)
-  {
-   $message = '<label class="text-danger">Email Already Register</label>';
-  } 
-  else
-  {
-   $user_avatar = make_avatar(strtoupper($user_name[0]));
-
-   $query = "
-   UPDATE register_user 
-   SET user_avatar = '".$user_avatar."' 
-   WHERE register_user_id = '".$connect->lastInsertId()."'
-   ";
-
-   $statement = $connect->prepare($query);
-
-   $statement->execute();
-
-   //print_r(error_get_last());
-   
-   //echo ("hi");
-
-
-   require 'class/class.phpmailer.php';
-   $mail = new PHPMailer;
-   $mail->IsSMTP();
-   $mail->Host = 'smtpout.secureserver.net';
-   $mail->Port = '80';
-   $mail->SMTPAuth = true;
-   $mail->Username = 'xxxxx';
-   $mail->Password = 'xxxxx';
-   $mail->SMTPSecure = '';
-   $mail->From = 'tutorial@webslesson.info';
-   $mail->FromName = 'Webslesson';
-   $mail->AddAddress($user_email);
-   $mail->WordWrap = 50;
-   $mail->IsHTML(true);
-   $mail->Subject = 'Verification code for Verify Your Email Address';
-
-   $message_body = '
-   <p>For verify your email address, enter this verification code when prompted: <b>'.$user_otp.'</b>.</p>
-   <p>Sincerely,</p>
-   <p>Webslesson.info</p>
-   ';
-   $mail->Body = $message_body;
-
-   if($mail->Send())
-   {
-    echo '<script>alert("Please Check Your Email for Verification Code")</script>';
-
-    header('location:email_verify.php?code='.$user_activation_code);
-   }
-   else
-   {
-    $message = $mail->ErrorInfo;
-   }
-  }
-
- }
-}
-
-?>
 <!DOCTYPE html>
 <html>
- <head>
-  <title>Resend Email Verification OTP in PHP Registration</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="http://code.jquery.com/jquery.js"></script>
-     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
- </head>
- <body>
-  <br />
-  <div class="container">
-   <h3 align="center">Resend Email Verification OTP in PHP Registration</h3>
-   <br />
-   <div class="panel panel-default">
-    <div class="panel-heading">
-     <h3 class="panel-title">Registration</h3>
-    </div>
-    <div class="panel-body">
-     <?php echo $message; ?>
-     <form method="post">
-      <div class="form-group">
-       <label>Enter Your Name</label>
-       <input type="text" name="user_name" class="form-control" />
-       <?php echo $error_user_name; ?>
-      </div>
-      <div class="form-group">
-       <label>Enter Your Email</label>
-       <input type="text" name="user_email" class="form-control" />
-       <?php echo $error_user_email; ?>
-      </div>
-      <div class="form-group">
-       <label>Enter Your Password</label>
-       <input type="password" name="user_password" class="form-control" />
-       <?php echo $error_user_password; ?>
-      </div>
-      <div class="form-group">
-       <input type="submit" name="register" class="btn btn-success" value="Click to Register" />&nbsp;&nbsp;&nbsp;
-       <a href="resend_email_otp.php" class="btn btn-default">Resend OTP</a>
-       &nbsp;&nbsp;&nbsp;
-       <a href="login.php">Login</a>
-      </div>
-     </form>
-    </div>
-   </div>
-  </div>
-  <br />
-  <br />
- </body>
+	<head>
+		<script async='async' src='//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'></script>
+		<script>
+		  (adsbygoogle = window.adsbygoogle || []).push({
+			google_ad_client: "ca-pub-4529508631166774",
+			enable_page_level_ads: true
+		  });
+		</script>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Webslesson Demo | PHP Registration with Email Verification using OTP</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="asset/js/jquery.js"></script>
+    	<script src="asset/js/bootstrap.min.js"></script>
+    	<link rel="stylesheet" href="asset/css/bootstrap.min.css">
+		<style>
+		    /* Remove the navbar's default margin-bottom and rounded borders */ 
+		    .navbar {
+		      margin-bottom: 0;
+		      border-radius: 0;
+		    }
+		    
+		    /* Set height of the grid so .sidenav can be 100% (adjust as needed) */
+		    .row.content {height: 450px}
+		    
+		    /* Set gray background color and 100% height */
+		    .sidenav {
+		      padding-top: 20px;
+		      background-color: #f1f1f1;
+		      height: 100%;
+		    }
+		    
+		    /* Set black background color, white text and some padding */
+		    footer {
+		      background-color: #555;
+		      color: white;
+		      padding: 15px;
+		    }
+		    
+		    /* On small screens, set height to 'auto' for sidenav and grid */
+		    @media screen and (max-width: 767px) {
+		      .sidenav {
+		        height: auto;
+		        padding: 15px;
+		      }
+		      .row.content {height:auto;} 
+		    }
+	  	</style>
+	</head>
+	<body>
+		<nav class="navbar navbar-inverse">
+		  	<div class="container-fluid">
+		    	<div class="navbar-header">
+		      		<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+		        	<span class="icon-bar"></span>
+		        	<span class="icon-bar"></span>
+		        	<span class="icon-bar"></span>                        
+		      		</button>
+		      		<a class="navbar-brand" href="http://demo.webslesson.info/">Webslesson Demo</a>
+		    	</div>
+		    	<div class="collapse navbar-collapse" id="myNavbar">
+			      	<ul class="nav navbar-nav">
+				        <li class="active"><a href="http://demo.webslesson.info/">Home</a></li>
+				        <li class="dropdown">
+				        	<a class="dropdown-toggle" data-toggle="dropdown" href="#">Tutorial
+					        <span class="caret"></span></a>
+					        <ul class="dropdown-menu">
+					          	<li><a href='https://www.webslesson.info/search/label/php'>PHP</a></li>
+								<li><a href='https://www.webslesson.info/search/label/mysql'>MySql</a></li>
+								<li><a href='https://www.webslesson.info/search/label/JQuery'>JQuery</a></li>
+								<li><a href='https://www.webslesson.info/search/label/Ajax'>Ajax</a></li>
+								<li><a href='https://www.webslesson.info/search/label/Codeigniter'>Codeigniter</a></li>
+								<li><a href='https://www.webslesson.info/search/label/AngularJS'>AngularJS</a></li>
+								<li><a href='https://www.webslesson.info/search/label/laravel'>Laravel</a></li>
+					        </ul>
+				        </li>
+				        <li class="dropdown">
+				        	<a class="dropdown-toggle" data-toggle="dropdown" href="#">Tools
+					        <span class="caret"></span></a>
+					        <ul class="dropdown-menu">
+					          	<li><a href='https://www.webslesson.info/p/online-slug-generator-tool.html' title='Online Slug Generator'>Online Slug Generator</a></li>
+								<li><a href='https://www.webslesson.info/p/online-code-formatter.html' title='Online Source Code Formatter'>Online Source Code Formatter</a></li>
+								<li><a href='https://www.webslesson.info/p/online-html-entities-encoder-and-decoder.html' title='HTML Encoder / Decoder'>HTML Encoder / Decoder</a></li>
+								<li><a href='https://www.webslesson.info/2018/03/count-character-count-words-online-convert-case.html' title='Convert Case & Count Character'>Convert Case & Count Character</a></li>
+					        </ul>
+				        </li>
+				        <li><a href='https://www.webslesson.info/p/about-us.html'>About Us</a></li>
+						<li><a href='https://www.webslesson.info/p/write-for-us-publish-guest-post.html'>Write for Us</a></li>
+						<li><a href='https://www.webslesson.info/p/privacy-policy.html'>Privacy Policy</a></li>
+						<li><a href='https://www.webslesson.info/p/terms-conditions.html'>Terms and Condition</a></li>
+						<li><a href='https://www.webslesson.info/p/contact-us.html'>Contact Me</a></li>
+			      	</ul>
+		    	</div>
+		  	</div>
+		</nav>
+		<div class="container-fluid text-center">    
+  			<div class="row content">
+  				<div class="col-sm-2">
+  					<div class="well" style="margin-top:30px;">
+  						<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+						<!-- webslesson_sidebarrightsec_AdSense1_1x1_as -->
+						<ins class="adsbygoogle"
+						     style="display:block"
+						     data-ad-client="ca-pub-4529508631166774"
+						     data-ad-host="ca-host-pub-1556223355139109"
+						     data-ad-host-channel="L0001"
+						     data-ad-slot="7056856732"
+						     data-ad-format="auto"
+						     data-full-width-responsive="true"></ins>
+						<script>
+						(adsbygoogle = window.adsbygoogle || []).push({});
+						</script>
+  					</div>
+  				</div>
+  				<div class="col-sm-8 text-left">
+  					<br />
+  					<h3 align="center">Back to Tutorial - <a href="https://www.webslesson.info/2020/06/php-registration-with-email-verification-using-otp.html">PHP Registration with Email Verification using OTP</a></h3>
+					<br />
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h3 class="panel-title">Registration</h3>
+						</div>
+						<div class="panel-body">
+														<form method="post">
+								<div class="form-group">
+									<label>Enter Your Name</label>
+									<input type="text" name="user_name" class="form-control" />
+																	</div>
+								<div class="form-group">
+									<label>Enter Your Email</label>
+									<input type="text" name="user_email" class="form-control" />
+																	</div>
+								<div class="form-group">
+									<label>Enter Your Password</label>
+									<input type="password" name="user_password" class="form-control" />
+																	</div>
+								<div class="form-group">
+									<input type="submit" name="register" class="btn btn-success" value="Click to Register" />&nbsp;&nbsp;&nbsp;<a href="resend_email_otp.php" class="btn btn-default">Resend OTP</a>&nbsp;&nbsp;&nbsp;
+									<a href="login.php">Login</a>
+								</div>
+							</form>
+						</div>
+					</div>
+					<br />
+					<br />
+					<a href="https://www.webslesson.info/p/source-code-for-php-login-registration.html">Download Source Code</a>
+								<br />
+								<br />
+  				</div>
+  				<div class="col-sm-2">
+  					
+  				</div>
+  			</div>
+  		</div>
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-87739877-1', 'auto');
+		  ga('send', 'pageview');
+
+		</script>
+		<br />
+		<br />
+	</body>
 </html>
